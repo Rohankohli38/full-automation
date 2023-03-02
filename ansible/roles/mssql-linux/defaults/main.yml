@@ -1,0 +1,48 @@
+--- 
+mssql_packages:   # For Redhat and Centos
+  - mssql-server
+  - python3-pip
+
+dependencies:
+  - curl
+  - gnupg2
+  - python3-pip
+
+unixODBC_packages:
+  - unixODBC-utf16
+  - unixODBC-utf16-devel
+
+mssql_tool_packages:
+  - mssql-tools
+  - unixodbc-dev
+
+end_user_license_aggreement_consent_server: Y # Must be Y or N
+
+end_user_license_aggreement_consent_cli: "YES" # Must be YES or NO in all caps within quotes
+
+edition: Developer
+
+db_name: "testDB"
+
+db_host: "localhost"
+
+db_port: 1433
+
+db_user: "sa"
+
+db_password: "Kohli@38"
+
+filename_to_execute: "table.sql"
+
+filename_to_copy: "table.sql"
+
+enable_iptables: true
+
+install_cli: true
+
+
+#### UBUNTU VARIABLES ####
+
+mssql_repo_url_ubuntu: "https://packages.microsoft.com/config/ubuntu/20.04/mssql-server-2022.list"
+
+mssql_tool_url_ubuntu: "https://packages.microsoft.com/config/ubuntu/20.04/prod.list"

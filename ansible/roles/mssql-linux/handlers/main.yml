@@ -1,0 +1,11 @@
+---
+- name: restart iptables
+  service:
+    name: firewalld
+    state: reloaded
+
+- name: update env redhat
+  shell: source /home/ec2-user/.bashrc
+
+- name: update env ubuntu
+  shell: source /home/ec2-user/.bashrc

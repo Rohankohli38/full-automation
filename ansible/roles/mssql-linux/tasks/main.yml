@@ -1,0 +1,148 @@
+---
+- debug:
+    msg: "Check to see if EULA variables are accepted"
+  failed_when: (end_user_license_aggreement_consent_server != "Y" )or (end_user_license_aggreement_consent_cli != "YES")
+
+- name: Install dependencies on Ubuntu
+  apt: 
+    name: "{{ dependencies }}"
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+
+- name: Download the Microsoft SQL Server signing key
+  shell: curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+
+- name: Import the MSFT gpg key
+  rpm_key:
+    state: present
+    key: https://packages.microsoft.com/keys/microsoft.asc
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  become: yes
+
+- name: Microsoft SQL Repository for ['Centos','Redhat']
+  command: curl -o /etc/yum.repos.d/mssql-server.repo https://packages.microsoft.com/config/rhel/8/mssql-server-2022.repo
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  become: yes
+  
+- name: Microsoft SQL Repository for Ubuntu
+  get_url:
+    url: "{{ mssql_repo_url_ubuntu }}"
+    dest: /etc/apt/sources.list.d/mssql-server.list
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+  
+- name: Refresh apt-get cache for server repo (Ubuntu)
+  command: apt-get update
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+  
+- name: Update package cache for ['Centos','Redhat']
+  yum:
+    update_cache: yes
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  become: yes
+  
+- name: Install Microsoft SQL Server on ['Centos', 'Redhat']
+  yum:
+    name: "{{ mssql_packages }}"
+    state: present
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  become: yes
+  
+- name: Install SQL Server on Ubuntu
+  apt:
+    name: mssql-server
+    state: present
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+  
+- name: Install pymssql for future playbooks against DB server
+  pip:
+    name: pymssql
+    state: present
+  become: yes
+  
+- name: Stop SQL Server
+  service:
+    name: mssql-server
+    state: stopped
+  become: yes
+  
+- name: Configure Microsoft SQL Server
+  shell:  MSSQL_PID="{{edition}}" MSSQL_SA_PASSWORD="{{db_password}}" /opt/mssql/bin/mssql-conf -n setup accept-eula
+  become: yes
+
+- name: Start SQL Server
+  service: 
+    name: mssql-server 
+    state: started 
+    enabled: yes
+  become: yes
+  
+- name: Install mssql-tools repo (Ubuntu)
+  get_url:
+    url: "{{ mssql_tool_url_ubuntu }}"
+    dest: /etc/apt/sources.list.d/mssql-tools.list
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+  
+- name: Microsoft SQL-CLI-TOOLS Repository
+  become: yes
+  command: sudo curl -o /etc/yum.repos.d/msprod.repo https://packages.microsoft.com/config/rhel/8/prod.repo
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  when: install_cli
+  
+- name: Refresh apt-get cache for tools repo (Ubuntu)
+  command: apt-get update
+  when: ansible_distribution == 'Ubuntu'
+  become: yes
+  
+- name: Remove older unixODBC files if performing upgrade
+  yum:
+    name: "{{ item }}"
+    state: absent
+  with_items: "{{ unixODBC_packages }}"
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  when: install_cli
+  become: yes
+  
+- name: Update all packages
+  yum:
+    name: '*'
+    state: latest
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  become: yes
+  
+- name: Install mssql-tools package
+  package:
+    name: mssql-tools
+    state: latest
+  environment:
+    ACCEPT_EULA: 'y'
+  when: install_cli
+  become: yes
+  
+- name: Add mssql tools to .bashrc on ['CentOS', 'RedHat']
+  lineinfile:
+    path: /home/ec2-user/.bashrc
+    state: present
+    line: 'export PATH="$PATH:/opt/mssql-tools/bin"'
+  when: install_cli
+  when: ansible_distribution in ['CentOS', 'RedHat']
+  notify: update env redhat
+  become: yes
+
+- name: Add mssql tools to .bashrc on Ubuntu
+  lineinfile:
+    path: /home/ubuntu/.bashrc
+    state: present
+    line: 'export PATH="$PATH:/opt/mssql-tools/bin"'
+  when: install_cli
+  when: ansible_distribution == 'Ubuntu'
+  notify: update env ubuntu
+  become: yes
+
+- name: Install required ansible collection
+  shell: ansible-galaxy collection install community.general
