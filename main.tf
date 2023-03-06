@@ -16,11 +16,11 @@ resource "local_file" "pem_file" {
 }
 
 resource "aws_instance" "sql_server_instance" {
-  ami                    = "ami-05c8ca4485f8b138a"
-  instance_type          = "t2.medium"
+  ami                    = var.ec2_ami_id
+  instance_type          = var.instance_type
   key_name               = aws_key_pair.key-pair.key_name
-  vpc_security_group_ids = ["sg-0d7bab2165530489e"]
-  subnet_id              = "subnet-023bb16a82a3f6565"
+  vpc_security_group_ids = var.vpc_security_group_ids
+  subnet_id              = var.subnet_id
   tags = {
     Name = "sql_server_instance"
   }
